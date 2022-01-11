@@ -37,8 +37,6 @@ class pepperfryScrapy(scrapy.Spider):
             os.makedirs(itempath)
         prod_urls = response.css('div.clipCard__wrapper input::attr(data-product-url)').getall()[0:5]
         for prod_url in prod_urls:
-            # print(product)
-            # print(prod_link)
             yield scrapy.Request(url = prod_url, callback=self.parsepage,dont_filter=True,cb_kwargs = dict(item = item))
     
     def parsepage(self, response, item):
@@ -49,14 +47,21 @@ class pepperfryScrapy(scrapy.Spider):
         item_path = 'pepperfry/{}/{}'.format(item,prod_name)
         if not os.path.exists(item_path):
             os.makedirs(item_path)
-        prod_price = response.css('div.vip-eff-price-wrap span::text').get()
+        prod_price = response.css('div.vip-eff-price-wrap span.vip-eff-price-amt::text').get()
+        prod_disc = response.css('div.vip-eff-price-wrap span.vip-eff-price-disc::text').get()
         gallery = response.css('div.vipImage__thumb-wrapper ul li')
         img_urls = gallery.css('a::attr(data-img)').getall()
-        print('\n\n\n\n\n')
         for index,img_url in enumerate(img_urls):
-            print(index,img_url)
             data = requests.get(img_url)
             # path = ''
             with open(os.path.join( item_path, "{}.jpg".format(index)),'wb') as f:
                 f.write(data.content)
-        
+        with open(os.path.join( item_path, "metadata.txt".format(index)),'w',encoding='UTF-8') as f:
+            f.write("Product: {}\n".format(prod_name))
+            f.write("Price: {}\n".format(prod_price))
+            f.write("Discount: {}\n".format(prod_disc))
+            table = response.css('div.vip-prod-dtl-wrap')
+            for t in table:
+                f.write("{}: {}".format(t.css('span.vip-prod-dtl-ttl::text').get(),t.css('span.vip-prod-dtl-subttl::text').get()))
+                f.write('\n')
+
